@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
 // Keys come from Vercel Environment Variables (see DEPLOYMENT_GUIDE.txt)
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://aduxlinuyiednhysxtsc.supabase.co';
-const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkdXhsaW51eWllZG5oeXN4dHNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzIzNDMsImV4cCI6MjA5NjE0ODM0M30.rX1Q5pgjsJjZSWMnGa32SbWMUjeOPhjc5SpdUYmPzIs';
+const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'sb_publishable_3k9GrknUCULJgpaVGIAMuQ_ooN2Kf0J';
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'WC2026admin';
 
 // Plain fetch helpers – no supabase-js library needed
