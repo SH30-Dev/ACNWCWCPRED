@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
 // Keys come from Vercel Environment Variables (see DEPLOYMENT_GUIDE.txt)
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://aduxlinuyiednhysxtsc.supabase.co/rest/v1';
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://aduxlinuyiednhysxtsc.supabase.co';
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkdXhsaW51eWllZG5oeXN4dHNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzIzNDMsImV4cCI6MjA5NjE0ODM0M30.rX1Q5pgjsJjZSWMnGa32SbWMUjeOPhjc5SpdUYmPzIs';
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'WC2026admin';
 
