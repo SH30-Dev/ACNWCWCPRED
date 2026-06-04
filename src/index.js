@@ -1,14 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { createClient } from '@supabase/supabase-js';
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
 // Keys come from Vercel Environment Variables (see DEPLOYMENT_GUIDE.txt)
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://aduxlinuyiednhysxtsc.supabase.co';
-const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'sb_publishable_3k9GrknUCULJgpaVGIAMuQ_ooN2Kf0J';
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://aduxlinuyiednhysxtsc.supabase.co/rest/v1/';
+const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkdXhsaW51eWllZG5oeXN4dHNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzIzNDMsImV4cCI6MjA5NjE0ODM0M30.rX1Q5pgjsJjZSWMnGa32SbWMUjeOPhjc5SpdUYmPzIs';
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'WC2026admin';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Plain fetch helpers – no supabase-js library needed
+const SB_HEADERS = () => ({
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
+});
+const SB_URL = (table, qs='') => SUPABASE_URL + '/rest/v1/' + table + (qs ? '?' + qs : '');
+
+const sbSelect = async (table, qs='') => {
+  const r = await fetch(SB_URL(table, qs), { headers: SB_HEADERS() });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+};
+const sbInsert = async (table, body) => {
+  const r = await fetch(SB_URL(table), {
+    method: 'POST', headers: SB_HEADERS(), body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+};
+const sbUpdate = async (table, qs, body) => {
+  const r = await fetch(SB_URL(table, qs), {
+    method: 'PATCH', headers: { ...SB_HEADERS(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+};
 
 // ─── WORLD CUP DATA ──────────────────────────────────────────────────────────
 const GROUPS = {
@@ -456,28 +482,28 @@ function App() {
   // Load initial data & subscribe to realtime
   useEffect(() => {
     async function load() {
-      const [{ data: adm }, { data: subs }] = await Promise.all([
-        supabase.from('admin_state').select('*').eq('id', 1).single(),
-        supabase.from('submissions').select('*').order('created_at', { ascending: true }),
+      const [admArr, subs] = await Promise.all([
+        sbSelect('admin_state', 'id=eq.1'),
+        sbSelect('submissions', 'order=created_at.asc'),
       ]);
-      if (adm) setAdminState(adm);
+      if (admArr && admArr[0]) setAdminState(admArr[0]);
       if (subs) setSubmissions(subs);
       setLoadingData(false);
     }
     load();
 
-    // Realtime subscriptions
-    const ch1 = supabase.channel('admin_rt')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_state' },
-        p => setAdminState(p.new))
-      .subscribe();
-
-    const ch2 = supabase.channel('subs_rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'submissions' },
-        p => setSubmissions(prev => [...prev, p.new]))
-      .subscribe();
-
-    return () => { ch1.unsubscribe(); ch2.unsubscribe(); };
+    // Poll every 5 seconds for live updates
+    const poll = setInterval(async () => {
+      try {
+        const [admArr, subs] = await Promise.all([
+          sbSelect('admin_state', 'id=eq.1'),
+          sbSelect('submissions', 'order=created_at.asc'),
+        ]);
+        if (admArr && admArr[0]) setAdminState(admArr[0]);
+        if (subs) setSubmissions(subs);
+      } catch(e) { /* silent */ }
+    }, 5000);
+    return () => clearInterval(poll);
   }, []);
 
   const actualScores = adminState.actual_scores || {};
@@ -545,11 +571,15 @@ function PredictTab({ qualifiers, actualScores, onSubmit }) {
       first_name: first.trim(), last_name: last.trim(), team_name: team.trim(),
       group_scores: gScores, ko_winners: koW, bonus,
     };
-    const { data, error } = await supabase.from('submissions').insert(sub).select().single();
-    setSaving(false);
-    if (error) { setErr('Error saving – please try again.'); return; }
-    onSubmit(data);
-    setStep('done');
+    try {
+      const arr = await sbInsert('submissions', sub);
+      setSaving(false);
+      onSubmit(arr[0] || sub);
+      setStep('done');
+    } catch(e) {
+      setSaving(false);
+      setErr('Error saving: ' + e.message);
+    }
   }
 
   if (step === 'done') return (
@@ -839,7 +869,7 @@ function AdminTab({ adminUnlocked, setAdminUnlocked, adminState, setAdminState, 
     if (s1==='' || s2==='') return;
     setSaving(p=>({...p,[n]:true}));
     const newScores = { ...(adminState.actual_scores||{}), [n]: { s1:+s1, s2:+s2 } };
-    await supabase.from('admin_state').update({ actual_scores: newScores }).eq('id',1);
+    await sbUpdate('admin_state', 'id=eq.1', { actual_scores: newScores });
     setAdminState(p=>({...p, actual_scores: newScores}));
     setSaving(p=>({...p,[n]:false}));
   }
@@ -847,12 +877,12 @@ function AdminTab({ adminUnlocked, setAdminUnlocked, adminState, setAdminState, 
   async function saveKOWinner(code, winner) {
     if (!winner) return;
     const newKoW = { ...(adminState.ko_winners||{}), [code]: winner };
-    await supabase.from('admin_state').update({ ko_winners: newKoW }).eq('id',1);
+    await sbUpdate('admin_state', 'id=eq.1', { ko_winners: newKoW });
     setAdminState(p=>({...p, ko_winners: newKoW}));
   }
 
   async function saveBonus(ba) {
-    await supabase.from('admin_state').update({ bonus_actual: ba }).eq('id',1);
+    await sbUpdate('admin_state', 'id=eq.1', { bonus_actual: ba });
     setAdminState(p=>({...p, bonus_actual: ba}));
     alert('Bonus results saved.');
   }
