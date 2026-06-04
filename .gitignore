@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+
+# Environment variables - NEVER commit this
+.env
+.env.local
+.env.production
+
+# System files
+.DS_Store
+Thumbs.db
